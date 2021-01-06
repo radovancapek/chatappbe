@@ -50,12 +50,15 @@ io.on("connection", (socket) => {
     console.log("Made socket connection");
 
     socket.on("get_messages", (data) => {
-        console.log("get_messages " + data.myId);
-        if(data.myId == null) data.myId = 1;
+        console.log("get_messages " + data.from);
+        const from = data.from || 0;
+        const to = data.to || 0;
+
         io.sockets.emit("new_message", {message: data.message});
         db.sequelize.query(
-            'SELECT * FROM messages WHERE messages.from = :myid OR messages.to = :myid',
-            { replacements: {myid: data.myId}, model: Message }).then(function(messages){
+            'SELECT * FROM messages WHERE (messages.from = :from AND messages.to = :to)' +
+            ' OR (messages.from = :to AND messages.to = :from)',
+            { replacements: {from: from, to: to}, model: Message }).then(function(messages){
             socket.emit("get_messages", messages);
         }).catch(reason => {
             console.log(reason);

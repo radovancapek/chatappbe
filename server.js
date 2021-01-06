@@ -11,7 +11,7 @@ let corsOptions = {
 
 const db = require("./app/models");
 const Message = db.messages;
-db.sequelize.sync({force: true}).then(r => console.log("aaa"));
+db.sequelize.sync().then(r => console.log("aaa"));
 
 app.use(cors());
 

@@ -38,7 +38,7 @@ const server = app.listen(PORT, () => {
 
 const options = {
     cors: true,
-    origins: ["http://127.0.0.1:3000"],
+    origins: ["http://127.0.0.1:3000", "https://chat-app-capek-client.herokuapp.com"],
 }
 
 const io = socket(server, options);

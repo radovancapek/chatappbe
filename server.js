@@ -11,6 +11,7 @@ let corsOptions = {
 
 const db = require("./app/models");
 const Message = db.messages;
+const Op = db.Sequelize.Op;
 db.sequelize.sync().then(r => console.log("aaa"));
 
 app.use(cors());
@@ -21,13 +22,12 @@ app.use(express.static('public'));
 app.use(bodyParser.json());
 
 // parse requests of content-type - application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({extended: true}));
 
 // simple route
 app.get("/", (req, res) => {
-    res.json({ message: "Chat app backend" });
+    res.json({message: "Chat app backend"});
 });
-
 
 
 // set port, listen for requests
@@ -36,9 +36,9 @@ const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}.`);
 });
 
-const options={
-    cors:true,
-    origins:["http://127.0.0.1:3000"],
+const options = {
+    cors: true,
+    origins: ["http://127.0.0.1:3000"],
 }
 
 const io = socket(server, options);
@@ -47,18 +47,67 @@ require("./app/routes/message.routes")(app);
 require("./app/routes/user.routes")(app, io);
 
 io.on("connection", (socket) => {
-    console.log("Made socket connection");
+    console.log("Made socket connection " + socket.id);
+
+    socket.on("get_unread", (data) => {
+        const to = data.to || 0;
+
+        Message.findAll({
+            where: {
+                seen: false,
+                to: data.to
+            }
+        }).then((_messages) => {
+            let messages = {};
+            _messages.forEach((message) => {
+                messages[message.from] = (messages[message.from] || 0) + 1;
+            })
+            socket.emit("get_unread", messages);
+        }).catch(reason => {
+            console.log(reason);
+        })
+    })
+
+    socket.on("set_seen", (data) => {
+        Message.update(
+            {
+                seen: true
+            },
+            {
+                where: {
+                    from: data.from,
+                    to: data.to
+                }
+            })
+            .then(num => {
+                socket.emit("set_seen", data);
+            })
+            .catch(err => {
+                res.status(500).send({
+                    message: "Error updating Tutorial with id=" + id
+                });
+            });
+    })
 
     socket.on("get_messages", (data) => {
-        console.log("get_messages " + data.from);
+        //console.log("get_messages " + data.from);
         const from = data.from || 0;
         const to = data.to || 0;
 
-        io.sockets.emit("new_message", {message: data.message});
-        db.sequelize.query(
-            'SELECT * FROM messages WHERE (messages.from = :from AND messages.to = :to)' +
-            ' OR (messages.from = :to AND messages.to = :from)',
-            { replacements: {from: from, to: to}, model: Message }).then(function(messages){
+        Message.findAll({
+            where: {
+                [Op.or]: [
+                    {
+                        from: data.from,
+                        to: data.to
+                    },
+                    {
+                        from: data.to,
+                        to: data.from
+                    }
+                ]
+            }
+        }).then((messages) => {
             socket.emit("get_messages", messages);
         }).catch(reason => {
             console.log(reason);
@@ -66,15 +115,9 @@ io.on("connection", (socket) => {
     })
 
     socket.on("new_message", (message) => {
-        console.log("message " + message.text);
         Message.create(message).then(() => {
-            socket.emit("fetch_messages");
+            socket.emit("new_message", message);
+            socket.broadcast.emit("new_message", message);
         });
-    })
-
-    socket.on("new_user", () => {
-
-        console.log("new user event server");
-        io.sockets.emit("new_user", {timestamp: Date.now()});
     })
 });

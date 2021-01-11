@@ -32,9 +32,9 @@ exports.create = (req, res) => {
 // Retrieve all Tutorials from the database.
 exports.findAll = (req, res) => {
     const title = req.query.title;
-    let condition = title ? { title: { [Op.iLike]: `%${title}%` } } : null;
+    let condition = title ? {title: {[Op.iLike]: `%${title}%`}} : null;
 
-    Message.findAll({ where: condition })
+    Message.findAll({where: condition})
         .then(data => {
             res.send(data);
         })
@@ -47,7 +47,7 @@ exports.findAll = (req, res) => {
 };
 
 exports.findAllInChat = (req, res) => {
-    if(req) {
+    if (req) {
         const fromParam = req.params.from;
         const toParam = req.params.to;
         Message.findAll({
@@ -93,7 +93,7 @@ exports.delete = (req, res) => {
     const id = req.params.id;
 
     Message.destroy({
-        where: { id: id }
+        where: {id: id}
     })
         .then(num => {
             if (num == 1) {
@@ -120,7 +120,7 @@ exports.deleteAll = (req, res) => {
         truncate: false
     })
         .then(nums => {
-            res.send({ message: `${nums} messages were deleted successfully!` });
+            res.send({message: `${nums} messages were deleted successfully!`});
         })
         .catch(err => {
             res.status(500).send({
@@ -132,7 +132,11 @@ exports.deleteAll = (req, res) => {
 
 // Find all published Tutorials
 exports.findAllUnread = (req, res) => {
-    Message.findAll({ where: { seen: false } })
+    Message.findAll({
+        where: {
+            seen: false
+        }
+    })
         .then(data => {
             res.send(data);
         })

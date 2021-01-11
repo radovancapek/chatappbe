@@ -16,6 +16,7 @@
     "@types/socket.io": "^2.1.12",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
+    "dateformat": "^4.4.1",
     "express": "^4.17.1",
     "nodemon": "^2.0.6",
     "pg": "^8.5.1",

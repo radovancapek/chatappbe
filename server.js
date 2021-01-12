@@ -42,12 +42,18 @@ const options = {
 }
 
 const io = socket(server, options);
+let connectedClients = {};
 
 require("./app/routes/message.routes")(app);
 require("./app/routes/user.routes")(app, io);
 
 io.on("connection", (socket) => {
     console.log("Made socket connection " + socket.id);
+
+    socket.on("new_user", (data) => {
+        connectedClients[data.userId] = socket;
+        console.log("loggedUser", connectedClients[data.userId]);
+    })
 
     socket.on("get_unread", (data) => {
         const to = data.to || 0;
@@ -79,22 +85,19 @@ io.on("connection", (socket) => {
                     to: data.to
                 }
             })
-            .then(num => {
-                socket.emit("set_seen", data);
+            .then(message => {
+                socket.emit("set_seen", message);
+                console.log("connectedClient", connectedClients[data.from]);
+                if(connectedClients[data.from]) {
+                    connectedClients[data.from].emit("seen", message);
+                }
             })
-            .catch(err => {
-                res.status(500).send({
-                    message: "Error updating Tutorial with id=" + id
-                });
-            });
+            .catch(reason => {
+                console.log(reason);
+            })
     })
 
-    socket.on("get_messages", (data) => {
-        //console.log("get_messages " + data.from);
-        const from = data.from || 0;
-        const to = data.to || 0;
-
-        Message.findAll({
+    socket.on("get_messages", (data) => {Message.findAll({
             where: {
                 [Op.or]: [
                     {
@@ -106,7 +109,10 @@ io.on("connection", (socket) => {
                         to: data.from
                     }
                 ]
-            }
+            },
+            order: [
+                ["createdAt", "ASC"]
+            ]
         }).then((messages) => {
             socket.emit("get_messages", messages);
         }).catch(reason => {
@@ -115,9 +121,14 @@ io.on("connection", (socket) => {
     })
 
     socket.on("new_message", (message) => {
-        Message.create(message).then(() => {
-            socket.emit("new_message", message);
-            socket.broadcast.emit("new_message", message);
+        console.log("new message", connectedClients[message.to]);
+        Message.create(message).then((newMessage) => {
+            socket.emit("new_message", newMessage);
+            if(connectedClients[message.to]) {
+                connectedClients[message.to].emit("new_message", newMessage);
+            }
+
+            //socket.broadcast.emit("new_message", message);
         });
     })
 });

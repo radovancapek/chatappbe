@@ -48,11 +48,8 @@ require("./app/routes/message.routes")(app);
 require("./app/routes/user.routes")(app, io);
 
 io.on("connection", (socket) => {
-    console.log("Made socket connection " + socket.id);
-
     socket.on("new_user", (data) => {
         connectedClients[data.userId] = socket;
-        console.log("loggedUser", connectedClients[data.userId]);
     })
 
     socket.on("get_unread", (data) => {
@@ -87,7 +84,6 @@ io.on("connection", (socket) => {
             })
             .then(message => {
                 socket.emit("set_seen", message);
-                console.log("connectedClient", connectedClients[data.from]);
                 if(connectedClients[data.from]) {
                     connectedClients[data.from].emit("seen", message);
                 }
@@ -121,7 +117,6 @@ io.on("connection", (socket) => {
     })
 
     socket.on("new_message", (message) => {
-        console.log("new message", connectedClients[message.to]);
         Message.create(message).then((newMessage) => {
             socket.emit("new_message", newMessage);
             if(connectedClients[message.to]) {
